@@ -2,3 +2,5 @@ doc
 out
 tmp
 rec
+tst
+.env

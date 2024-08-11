@@ -5,7 +5,7 @@ import time
 import os
 from collections import deque
 
-class SpeakerRecorder:
+class MicrophoneRecorder:
     def __init__(self, output_dir="rec", samplerate=40000,
                  max_files=7, silence_threshold=0.01, silence_duration=2.0,
                  max_recording_duration_mins=30):
@@ -23,8 +23,8 @@ class SpeakerRecorder:
         return np.mean(np.abs(data)) < self.silence_threshold
 
     def record_until_silence(self, output_file_name):
-        """Record audio until silence or maximum duration is reached."""
-        with sc.get_microphone(id=str(sc.default_speaker().name), include_loopback=True).recorder(samplerate=self.samplerate) as mic:
+        """Record audio from microphone until silence or maximum duration is reached."""
+        with sc.default_microphone().recorder(samplerate=self.samplerate) as mic:
             frames = []
             start_time = time.time()
 
@@ -59,11 +59,9 @@ class SpeakerRecorder:
     def manage_files(self, file_list):
         """Manage a rotating list of files, keeping only the most recent ones."""
         while len(file_list) > self.max_files:
-            # print("removing files")
             oldest_file = file_list.popleft()
             if os.path.exists(oldest_file):
                 os.remove(oldest_file)
-                # print(f"Deleted old file: {oldest_file}")
 
     def get_file_list(self):
         """Get a list of audio files in the output directory sorted by modification time."""
@@ -72,7 +70,7 @@ class SpeakerRecorder:
         return deque(files)
 
     def record(self):
-        """Main recording loop to record audio and manage files."""
+        """Main recording loop to record audio from microphone and manage files."""
 
         while True:
             try:
@@ -81,7 +79,7 @@ class SpeakerRecorder:
                 current_time = time.strftime("%Y%m%d_%H%M%S")
                 output_file_name = os.path.join(self.output_dir, f"recording_{current_time}.wav")
 
-                # Record audio until silence or max duration is reached
+                # Record audio from microphone until silence or max duration is reached
                 self.record_until_silence(output_file_name)
                 file_list.append(output_file_name)
 
@@ -93,5 +91,5 @@ class SpeakerRecorder:
                 break
 
 if __name__ == "__main__":
-    recorder = SpeakerRecorder()
+    recorder = MicrophoneRecorder()
     recorder.record()

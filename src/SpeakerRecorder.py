@@ -43,32 +43,28 @@ class SpeakerRecorder:
                         if not self.is_silence(data):
                             break
                     else:
-                        # print("End of sentence detected.")
+                        # end of sentence here
                         break
 
                 if time.time() - start_time > self.max_recording_duration:
                     print("Maximum recording duration reached.")
                     break
 
-            # Bring frames back together
             audio_data = np.concatenate(frames)
 
             sf.write(file=output_file_name, data=audio_data[:, 0], samplerate=self.samplerate)
-            # print(f"Recording saved as {output_file_name}")
 
     def manage_files(self, file_list):
         """Manage a rotating list of files, keeping only the most recent ones."""
         while len(file_list) > self.max_files:
-            # print("removing files")
             oldest_file = file_list.popleft()
             if os.path.exists(oldest_file):
                 os.remove(oldest_file)
-                # print(f"Deleted old file: {oldest_file}")
 
     def get_file_list(self):
         """Get a list of audio files in the output directory sorted by modification time."""
         files = [os.path.join(self.output_dir, f) for f in os.listdir(self.output_dir) if f.endswith('.wav')]
-        files.sort(key=os.path.getmtime)  # modification time ordering
+        files.sort(key=os.path.getmtime)  # modification time
         return deque(files)
 
     def record(self):
@@ -81,11 +77,9 @@ class SpeakerRecorder:
                 current_time = time.strftime("%Y%m%d_%H%M%S")
                 output_file_name = os.path.join(self.output_dir, f"recording_{current_time}.wav")
 
-                # Record audio until silence or max duration is reached
                 self.record_until_silence(output_file_name)
                 file_list.append(output_file_name)
 
-                # Keep most recent files
                 self.manage_files(file_list)
 
             except KeyboardInterrupt:

@@ -32,7 +32,6 @@ class MicrophoneRecorder:
                 data = mic.record(numframes=self.samplerate // 10)  # 0.1 secs recorded
                 frames.append(data)
 
-                # flatten audio data for silence detection
                 flat_data = np.concatenate(frames)
 
                 if self.is_silence(data):
@@ -43,18 +42,16 @@ class MicrophoneRecorder:
                         if not self.is_silence(data):
                             break
                     else:
-                        # print("End of sentence detected.")
+                        # end of sentence
                         break
 
                 if time.time() - start_time > self.max_recording_duration:
                     print("Maximum recording duration reached.")
                     break
 
-            # Bring frames back together
             audio_data = np.concatenate(frames)
 
             sf.write(file=output_file_name, data=audio_data[:, 0], samplerate=self.samplerate)
-            # print(f"Recording saved as {output_file_name}")
 
     def manage_files(self, file_list):
         """Manage a rotating list of files, keeping only the most recent ones."""
@@ -79,7 +76,6 @@ class MicrophoneRecorder:
                 current_time = time.strftime("%Y%m%d_%H%M%S")
                 output_file_name = os.path.join(self.output_dir, f"recording_{current_time}.wav")
 
-                # Record audio from microphone until silence or max duration is reached
                 self.record_until_silence(output_file_name)
                 file_list.append(output_file_name)
 

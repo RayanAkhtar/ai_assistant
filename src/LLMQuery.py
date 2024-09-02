@@ -77,4 +77,8 @@ class LLMQuery:
 
 if __name__ == "__main__":
     llm_query = LLMQuery()
-    print(llm_query.generate_query(["tst/test_doc.docx"], [], "Who was the founder of the company 'test', and when was it founded?"))
+    print(llm_query.generate_query(
+        ["tst/test_doc.docx"], 
+        [], 
+        "Who was the founder of the company 'test', and when was it founded?"
+    ))

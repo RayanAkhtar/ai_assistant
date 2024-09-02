@@ -50,8 +50,7 @@ def get_files_sorted_by_creation_time(directory):
     """
     files = [os.path.join(directory, file) for file in os.listdir(directory) if os.path.isfile(os.path.join(directory, file))]
     
-    # sort by creation time
-    files.sort(key=lambda x: os.path.getctime(x))
+    files.sort(key=lambda x: os.path.getctime(x)) # Creation time
     
     return files
 
@@ -61,7 +60,7 @@ if __name__ == "__main__":
     files = get_files_sorted_by_creation_time(directory)
     transcription = ""
     for file in files:
-        transcription += transcriber.transcribe(file).text + "\n"
-    # Print the combined transcription
+        if file.split('.')[-1] == "wav":
+            transcription += transcriber.transcribe(file).text + "\n"
     print("Transcription:\n", transcription)
 

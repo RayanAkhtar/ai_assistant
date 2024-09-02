@@ -61,7 +61,8 @@ if __name__ == "__main__":
     files = get_files_sorted_by_creation_time(directory)
     transcription = ""
     for file in files:
-        transcription += transcriber.transcribe(file).text + "\n"
+        if file.split('.')[-1] == "wav":
+            transcription += transcriber.transcribe(file).text + "\n"
     # Print the combined transcription
     print("Transcription:\n", transcription)
 

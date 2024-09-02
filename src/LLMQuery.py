@@ -1,6 +1,8 @@
 from dotenv import load_dotenv
 import os
-from langchain import OpenAI, LLMChain, PromptTemplate
+from langchain_openai import OpenAI
+from langchain.chains import LLMChain
+from langchain_core.prompts import PromptTemplate
 from langchain.schema import Document
 import pdfplumber
 from docx import Document as DocxDocument

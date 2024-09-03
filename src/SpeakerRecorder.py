@@ -80,8 +80,6 @@ class SpeakerRecorder:
                 self.record_until_silence(output_file_name)
                 file_list.append(output_file_name)
 
-                self.manage_files(file_list)
-
             except KeyboardInterrupt:
                 print("Recording stopped by user.")
                 break

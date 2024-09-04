@@ -3,10 +3,11 @@ from queue import Queue
 
 from SpeakerRecorder import SpeakerRecorder
 from SpeechToText import AudioTranscriber
-
+from LLMQuery import LLMQuery
 
 recorder = SpeakerRecorder()
 transcriber = AudioTranscriber()
+llm = LLMQuery()
 
 transcript_summary_path = "doc/summary.txt"
 
@@ -42,7 +43,25 @@ def add_to_transcript(transcript: Queue, transcription):
     
 def summarise(summary: list[str]):
     "Summarises the summary by updating the first index(summary) with the following indices(transcriptions)"
-    pass # todo
+    prev_summary = summary[0]
+    transcriptions = summary[1:]
+
+    query = f"""
+Your role is to summarise transcripts from the callee in an audio call in order to reduce the number of words/tokens that a summary takes up. You generally do not exceed 500 tokens.
+You also preserve key information obtained in the meeting such as the company name, their goals and motivations, as well as any other relevant information that a telemarketer could use to help with the sale of their product.
+
+Here is the current summary:
+{prev_summary}
+
+Here are the current transcripts:
+{"\n".join(transcriptions)}
+
+Please update the current summary with the current transcriptions to generate a new transcription.
+"""
+    
+    new_summary = llm.generate_query(file_paths=[], few_shot_prompts=[], query=query)
+    return [new_summary]
+
 
 def update_summary(latest_sentence):
     """Updates the documented summary of the transcript with the latest sentence"""
@@ -61,9 +80,11 @@ def update_summary(latest_sentence):
         summary.append(latest_sentence)
         fw.writelines(summary)    
 
-def pass_prompt():
+def pass_prompt(transcript):
     """Runs the Prompt on an LLM to get a relevant output"""
-    pass # todo
+    # Documents that are to be read must be places in doc/
+    # A summary of the current conversation will also be held in doc/
+
 
 if __name__ == "__main__":
     cleanup()
@@ -73,5 +94,5 @@ if __name__ == "__main__":
         transcription = transcribe_audio(audio_file_path)
         latest_sentence = add_to_transcript(transcript, transcription)
         update_summary(latest_sentence)
-        message = pass_prompt()
+        message = pass_prompt(transcript)
         print(message)

@@ -5,6 +5,8 @@ import time
 import os
 from collections import deque
 
+# todo later: refactor to combine speaker and microphone to avoid duplication
+
 class SpeakerRecorder:
     def __init__(self, output_dir="rec", samplerate=40000,
                  max_files=7, silence_threshold=0.01, silence_duration=2.0,
@@ -32,7 +34,6 @@ class SpeakerRecorder:
                 data = mic.record(numframes=self.samplerate // 10)  # 0.1 secs recorded
                 frames.append(data)
 
-                # flatten audio data for silence detection
                 flat_data = np.concatenate(frames)
 
                 if self.is_silence(data):

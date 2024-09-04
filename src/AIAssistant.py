@@ -1,3 +1,4 @@
+import os
 from queue import Queue
 
 from SpeakerRecorder import SpeakerRecorder
@@ -11,7 +12,13 @@ transcript_summary_path = "doc/summary.txt"
 
 def cleanup():
     """Removing files in tmp and rec"""
-
+    # For now, it only ignores tmp.txt, this part will be removed upon completing the AI Assistant
+    directories_to_clean = ['tmp', 'rec']
+    for directory in directories_to_clean:
+        for filename in os.listdir(directory):
+            file_path = os.path.join(directory, filename)
+            if os.path.isfile(file_path) and filename != 'tmp.txt':
+                os.remove(file_path)
 
 def record_audio():
     """Records audio from the speaker (for now)"""
@@ -20,8 +27,6 @@ def record_audio():
 def transcribe_audio(audio_file_path):
     """Transcribes the audio file that was just recorded"""
     return transcriber.transcribe(audio_file_path)
-
-    
 
 def add_to_transcript(transcript: Queue, transcription):
     """
@@ -37,7 +42,7 @@ def add_to_transcript(transcript: Queue, transcription):
     
 def summarise(summary: list[str]):
     "Summarises the summary by updating the first index(summary) with the following indices(transcriptions)"
-    pass
+    pass # todo
 
 def update_summary(latest_sentence):
     """Updates the documented summary of the transcript with the latest sentence"""
@@ -58,7 +63,7 @@ def update_summary(latest_sentence):
 
 def pass_prompt():
     """Runs the Prompt on an LLM to get a relevant output"""
-    pass
+    pass # todo
 
 if __name__ == "__main__":
     cleanup()

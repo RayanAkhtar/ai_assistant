@@ -5,6 +5,8 @@ import time
 import os
 from collections import deque
 
+# todo later: refactor to combine speaker and microphone to avoid duplication
+
 class MicrophoneRecorder:
     def __init__(self, output_dir="rec", samplerate=40000,
                  max_files=7, silence_threshold=0.01, silence_duration=2.0,
@@ -69,19 +71,17 @@ class MicrophoneRecorder:
     def record(self):
         """Main recording loop to record audio from microphone and manage files."""
 
-        while True:
-            try:
-                file_list = self.get_file_list()
+        try:
+            file_list = self.get_file_list()
 
-                current_time = time.strftime("%Y%m%d_%H%M%S")
-                output_file_name = os.path.join(self.output_dir, f"recording_{current_time}.wav")
+            current_time = time.strftime("%Y%m%d_%H%M%S")
+            output_file_name = os.path.join(self.output_dir, f"recording_{current_time}.wav")
 
-                self.record_until_silence(output_file_name)
-                file_list.append(output_file_name)
+            self.record_until_silence(output_file_name)
+            file_list.append(output_file_name)
 
-            except KeyboardInterrupt:
-                print("Recording stopped by user.")
-                break
+        except KeyboardInterrupt:
+            print("Recording stopped by user.")
 
 if __name__ == "__main__":
     recorder = MicrophoneRecorder()

@@ -65,7 +65,7 @@ Please update the current summary with the current transcriptions to generate a 
 
 def update_summary(latest_sentence):
     """Updates the documented summary of the transcript with the latest sentence"""
-    summary: list[str] = ""
+    summary: list[str] = []
 
     with open(transcript_summary_path, "r") as fr:
         summary = fr.readlines()
@@ -78,16 +78,63 @@ def update_summary(latest_sentence):
 
     with open(transcript_summary_path, "w") as fw:
         summary.append(latest_sentence)
-        fw.writelines(summary)    
+        fw.writelines(summary) 
+
+        fr.close()   
+
+
+def get_files_in(directory, ignored_files):
+    files = []
+    for root, dirs, filenames in os.walk(directory):
+        for filename in filenames:
+            if filename not in ignored_files:
+                files.append(os.path.join(root, filename))
+    return files
+
 
 def pass_prompt(transcript):
     """Runs the Prompt on an LLM to get a relevant output"""
     # Documents that are to be read must be places in doc/
     # A summary of the current conversation will also be held in doc/
+    # Transcript is a queue for the transcript
+
+    file_paths = get_files_in("doc/", ["tmp.txt"])
+
+    summary: list[str] = []
+    with open(transcript_summary_path, "r") as fr:
+        summary = fr.readlines()
+        fr.close()
+
+    query = f"""
+Your role is a caller making a call to a company, the purpose is to sell a product/service to the other party.
+
+---------------------
+Here is a summary of the current conversation:
+{summary}
+
+---------------------
+
+Here is the transcript from the callee's side:
+{"\n".join(transcript)}
+
+---------------------
+
+Please suggest 3 or more speaking points from this point onwards.
+
+"""
+    
+    output = llm.generate_query(
+        file_paths,
+        [],
+        query
+    )
+    
+    return output
+
 
 
 if __name__ == "__main__":
-    cleanup()
+    # cleanup()
     transcript = Queue(maxsize=5)
     while True:
         audio_file_path = record_audio()

@@ -5,8 +5,6 @@ import time
 import os
 from collections import deque
 
-# todo later: refactor to combine speaker and microphone to avoid duplication
-
 class SpeakerRecorder:
     def __init__(self, output_dir="rec", samplerate=40000,
                  max_files=7, silence_threshold=0.01, silence_duration=2.0,
@@ -24,9 +22,20 @@ class SpeakerRecorder:
         """Check if the audio data is silent."""
         return np.mean(np.abs(data)) < self.silence_threshold
 
+    def wait_for_sound(self, mic):
+        """Wait until sound is detected."""
+        print("Waiting for sound...")
+        while True:
+            data = mic.record(numframes=self.samplerate // 10)  # 0.1 secs recorded
+            if not self.is_silence(data):
+                print("Sound detected. Starting recording...")
+                break
+
     def record_until_silence(self, output_file_name):
         """Record audio until silence or maximum duration is reached."""
         with sc.get_microphone(id=str(sc.default_speaker().name), include_loopback=True).recorder(samplerate=self.samplerate) as mic:
+            self.wait_for_sound(mic)  # Wait until sound is detected
+
             frames = []
             start_time = time.time()
 

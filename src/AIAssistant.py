@@ -191,8 +191,7 @@ def microphone_recording_loop():
     """
     while True:
         try:
-            audio_file_path = microphone_recorder.record()
-            print(f"Microphone recorded audio to {audio_file_path}")
+            microphone_recorder.record()
             time.sleep(0.5)
         except Exception as e:
             print(f"Error in microphone recording loop: {e}")

@@ -30,11 +30,9 @@ class Recorder:
 
     def wait_for_sound(self, mic):
         """Wait until sound is detected."""
-        print("Waiting for sound...")
         while True:
             data = mic.record(numframes=self.samplerate // 10)  # 0.1 secs recorded
             if not self.is_silence(data):
-                print("Sound detected. Starting recording...")
                 break
 
     def record_until_silence(self, output_file_name):

@@ -5,10 +5,11 @@ import time
 import os
 from collections import deque
 
-class SpeakerRecorder:
-    def __init__(self, output_dir="rec", samplerate=40000,
+class Recorder:
+    def __init__(self, mode, output_dir="rec", samplerate=40000,
                  max_files=7, silence_threshold=0.01, silence_duration=2.0,
-                 max_recording_duration_mins=30):
+                 max_recording_duration_mins=2):
+        self.mode = mode
         self.output_dir = output_dir
         self.samplerate = samplerate
         self.max_files = max_files
@@ -33,36 +34,46 @@ class SpeakerRecorder:
 
     def record_until_silence(self, output_file_name):
         """Record audio until silence or maximum duration is reached."""
-        with sc.get_microphone(id=str(sc.default_speaker().name), include_loopback=True).recorder(samplerate=self.samplerate) as mic:
-            self.wait_for_sound(mic)  # Wait until sound is detected
 
-            frames = []
-            start_time = time.time()
+        if self.mode == "microphone":
+            with sc.default_microphone().recorder(samplerate=self.samplerate) as mic:
+                self.record_audio(output_file_name, mic)
+        elif self.mode == "speaker":
+            with sc.get_microphone(id=str(sc.default_speaker().name), include_loopback=True).recorder(samplerate=self.samplerate) as mic:
+                self.record_audio(output_file_name, mic)
+        else:
+            raise ValueError(f"Unknown mode: {self.mode}")
 
-            while True:
-                data = mic.record(numframes=self.samplerate // 10)  # 0.1 secs recorded
-                frames.append(data)
+    def record_audio(self, output_file_name, mic):
+        self.wait_for_sound(mic)  # Wait until sound is detected
 
-                flat_data = np.concatenate(frames)
+        frames = []
+        start_time = time.time()
 
-                if self.is_silence(data):
-                    silence_start = time.time()
-                    while time.time() - silence_start < self.silence_duration:
-                        data = mic.record(numframes=self.samplerate // 10)
-                        frames.append(data)
-                        if not self.is_silence(data):
-                            break
-                    else:
-                        # end of sentence here
+        while True:
+            data = mic.record(numframes=self.samplerate // 10)  # 0.1 secs recorded
+            frames.append(data)
+
+            flat_data = np.concatenate(frames)
+
+            if self.is_silence(data):
+                silence_start = time.time()
+                while time.time() - silence_start < self.silence_duration:
+                    data = mic.record(numframes=self.samplerate // 10)
+                    frames.append(data)
+                    if not self.is_silence(data):
                         break
-
-                if time.time() - start_time > self.max_recording_duration:
-                    print("Maximum recording duration reached.")
+                else:
+                        # end of sentence here
                     break
 
-            audio_data = np.concatenate(frames)
+            if time.time() - start_time > self.max_recording_duration:
+                print("Maximum recording duration reached.")
+                break
 
-            sf.write(file=output_file_name, data=audio_data[:, 0], samplerate=self.samplerate)
+        audio_data = np.concatenate(frames)
+
+        sf.write(file=output_file_name, data=audio_data[:, 0], samplerate=self.samplerate)
 
     def manage_files(self, file_list):
         """Manage a rotating list of files, keeping only the most recent ones."""
@@ -94,5 +105,5 @@ class SpeakerRecorder:
             print("Recording stopped by user.")
 
 if __name__ == "__main__":
-    recorder = SpeakerRecorder()
+    recorder = Recorder(mode="speaker")
     recorder.record()

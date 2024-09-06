@@ -1,11 +1,11 @@
 import os
 from queue import Queue
 
-from SpeakerRecorder import SpeakerRecorder
+from Recorder import Recorder
 from SpeechToText import AudioTranscriber
 from LLMQuery import LLMQuery
 
-recorder = SpeakerRecorder()
+recorder = Recorder()
 transcriber = AudioTranscriber()
 llm = LLMQuery()
 
@@ -128,7 +128,7 @@ Please suggest 3 or more speaking points from this point onwards.
         [],
         query
     )
-    
+
     return output
 
 

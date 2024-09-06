@@ -9,7 +9,12 @@ class Recorder:
     def __init__(self, mode, output_dir="rec", samplerate=40000,
                  max_files=7, silence_threshold=0.01, silence_duration=2.0,
                  max_recording_duration_mins=2):
-        self.mode = mode
+        
+        if mode in ["microphone", "speaker"]:
+            self.mode = mode
+        else:
+            raise ValueError(f"Unknown mode: {mode}. Please use 'microphone' or 'speaker' in Recorder class.")
+        
         self.output_dir = output_dir
         self.samplerate = samplerate
         self.max_files = max_files
@@ -41,8 +46,6 @@ class Recorder:
         elif self.mode == "speaker":
             with sc.get_microphone(id=str(sc.default_speaker().name), include_loopback=True).recorder(samplerate=self.samplerate) as mic:
                 self.record_audio(output_file_name, mic)
-        else:
-            raise ValueError(f"Unknown mode: {self.mode}")
 
     def record_audio(self, output_file_name, mic):
         self.wait_for_sound(mic)  # Wait until sound is detected
@@ -92,10 +95,16 @@ class Recorder:
         """Main recording loop to record audio and manage files."""
 
         try:
+            label: str = ""
+            if self.mode == "microphone":
+                label = "caller_"
+            elif self.mode == "speaker":
+                label = "callee_"
+
             file_list = self.get_file_list()
 
             current_time = time.strftime("%Y%m%d_%H%M%S")
-            output_file_name = os.path.join(self.output_dir, f"recording_{current_time}.wav")
+            output_file_name = os.path.join(self.output_dir, f"{current_time}_{label}.wav") # This way, we can order by name to get oldest to newest
 
             self.record_until_silence(output_file_name)
             file_list.append(output_file_name)

@@ -1,29 +1,30 @@
 import os
 from queue import Queue
+from concurrent.futures import ThreadPoolExecutor
+import threading
+import time
 
 from Recorder import Recorder
 from SpeechToText import AudioTranscriber
 from LLMQuery import LLMQuery
 
-recorder = Recorder()
+speaker_recorder = Recorder(mode='speaker')
+microphone_recorder = Recorder(mode='microphone')
 transcriber = AudioTranscriber()
 llm = LLMQuery()
 
 transcript_summary_path = "doc/summary.txt"
+transcript = Queue(maxsize=5)
 
 def cleanup():
-    """Removing files in tmp and rec"""
+    """Removing files in tmp, rec and debug"""
     # For now, it only ignores tmp.txt, this part will be removed upon completing the AI Assistant
-    directories_to_clean = ['tmp', 'rec']
+    directories_to_clean = ['tmp', 'rec', 'debug']
     for directory in directories_to_clean:
         for filename in os.listdir(directory):
             file_path = os.path.join(directory, filename)
             if os.path.isfile(file_path) and filename != 'tmp.txt':
                 os.remove(file_path)
-
-def record_audio():
-    """Records audio from the speaker (for now)"""
-    return recorder.record() # likely to change when integrating microphone recording
 
 def transcribe_audio(audio_file_path):
     """Transcribes the audio file that was just recorded"""
@@ -98,7 +99,7 @@ def pass_prompt(transcript):
     # A summary of the current conversation will also be held in doc/
     # Transcript is a queue for the transcript
 
-    file_paths = get_files_in("doc/", ["tmp.txt"])
+    file_paths = get_files_in(directory="doc/", ignored_files=["tmp.txt"])
 
     summary: list[str] = []
     with open(transcript_summary_path, "r") as fr:
@@ -133,13 +134,28 @@ Please suggest 3 or more speaking points from this point onwards.
 
 
 
-if __name__ == "__main__":
-    # cleanup()
-    transcript = Queue(maxsize=5)
+def ai_assistant_loop():
     while True:
-        audio_file_path = record_audio()
-        transcription = transcribe_audio(audio_file_path)
-        latest_sentence = add_to_transcript(transcript, transcription)
-        update_summary(latest_sentence)
-        message = pass_prompt(transcript)
-        print(message)
+        audio_file_path = speaker_recorder.record()
+        # transcription = transcriber.transcribe(audio_file_path)
+        # latest_sentence = add_to_transcript(transcript, transcription)
+        # update_summary(latest_sentence)
+        # message = pass_prompt(transcript)
+        # print(message)
+
+def microphone_recording_loop():
+    while True:
+        try:
+            audio_file_path = microphone_recorder.record()
+            print(f"Microphone recorded audio to {audio_file_path}")
+            time.sleep(0.5)
+        except Exception as e:
+            print(f"Error in microphone recording loop: {e}")
+
+
+if __name__ == "__main__":
+    cleanup()
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        executor.submit(microphone_recording_loop) # microphone in background thread
+        ai_assistant_loop() # speaker recorder in main thread
+

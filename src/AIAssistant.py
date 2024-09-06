@@ -17,23 +17,34 @@ transcript_summary_path = "doc/summary.txt"
 transcript = Queue(maxsize=5)
 
 def cleanup():
-    """Removing files in tmp, rec and debug"""
+    """
+    Cleans up the past session data by removing the data stores in tmp/, rec/ and debug/
+    """
     # For now, it only ignores tmp.txt, this part will be removed upon completing the AI Assistant
     directories_to_clean = ['tmp', 'rec', 'debug']
     for directory in directories_to_clean:
         for filename in os.listdir(directory):
             file_path = os.path.join(directory, filename)
-            if os.path.isfile(file_path) and filename != 'tmp.txt':
+            if os.path.isfile(file_path) and filename != 'tmp.txt': # todo: remove later
                 os.remove(file_path)
 
 def transcribe_audio(audio_file_path):
-    """Transcribes the audio file that was just recorded"""
+    """
+    Transcribes the audio that was just recorded.
+
+    :param audio_file_path: The path to the audio file
+    :return: A transcription for that audio file
+    """
     return transcriber.transcribe(audio_file_path)
 
 def add_to_transcript(transcript: Queue, transcription):
     """
-    Adds the transcript to the current list of transcriptions
-    If the current list size is greater than maxsize, the function will return the recently popped sentence
+    Adds the transcription to the transcript, maintaining the maximum number of items allowed in the transcription.
+
+    :param transcript: A queue that contains each transcription.
+    :param transcription: The next transcription to add to the queue.
+
+    :return: The transcription that was removed (if any)
     """
     latest_sentence = ""
     if transcript.full():
@@ -43,7 +54,14 @@ def add_to_transcript(transcript: Queue, transcription):
     return latest_sentence
     
 def summarise(summary: list[str]):
-    "Summarises the summary by updating the first index(summary) with the following indices(transcriptions)"
+    """
+    Summarises the summary by combining latter indices into the first one
+    
+    :param summary: The summary you wish to summarise.
+        summary[0]: The summary
+        summary[1..]: Any transcriptions you wish to update the summary with.
+    :return: The updated summary
+    """
     prev_summary = summary[0]
     transcriptions = summary[1:]
 
@@ -65,7 +83,11 @@ Please update the current summary with the current transcriptions to generate a 
 
 
 def update_summary(latest_sentence):
-    """Updates the documented summary of the transcript with the latest sentence"""
+    """
+    Updates the summary with the most recent transcription
+
+    :param latest_sentence: The sentence that was removed when updating the transcription
+    """    
     summary: list[str] = []
 
     with open(transcript_summary_path, "r") as fr:
@@ -85,6 +107,14 @@ def update_summary(latest_sentence):
 
 
 def get_files_in(directory, ignored_files):
+    """
+    Get a list of files in a directory, sorted by creation time.
+
+    :param directory: Path to the directory to scan.
+    :param ignored_files: A list of files to ignore in the scan.
+
+    :return: A list of file paths, sorted by creation time.
+    """
     files = []
     for root, dirs, filenames in os.walk(directory):
         for filename in filenames:
@@ -94,7 +124,13 @@ def get_files_in(directory, ignored_files):
 
 
 def pass_prompt(transcript):
-    """Runs the Prompt on an LLM to get a relevant output"""
+    """
+    Runs the prompt on the llm to generate responses for the caller
+
+    :param transcript: The current transcript of the call
+    :return: The output for the caller
+    """
+
     # Documents that are to be read must be places in doc/
     # A summary of the current conversation will also be held in doc/
     # Transcript is a queue for the transcript
@@ -135,15 +171,24 @@ Please suggest 3 or more speaking points from this point onwards.
 
 
 def ai_assistant_loop():
+    """
+    The 'main loop' of the ai assistant, records from the speaker, and after each pause,
+    an llm will be prompted to make suggestions for the caller.
+    """
     while True:
         audio_file_path = speaker_recorder.record()
         # transcription = transcriber.transcribe(audio_file_path)
         # latest_sentence = add_to_transcript(transcript, transcription)
-        # update_summary(latest_sentence)
+        # if latest_sentence != "":
+            # update_summary(latest_sentence)
         # message = pass_prompt(transcript)
         # print(message)
 
 def microphone_recording_loop():
+    """
+    The background loop for the ai assistant. Takes input from the microphone so that the
+    responses generated from the assistant will be more tailored to that call session.
+    """
     while True:
         try:
             audio_file_path = microphone_recorder.record()

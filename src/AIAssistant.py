@@ -188,19 +188,23 @@ def ai_assistant_loop():
     an llm will be prompted to make suggestions for the caller.
     """
     while True:
-        audio_file_path = speaker_recorder.record()
-        
-        transcription = transcriber.transcribe(audio_file_path)
-        if debug:
-            debug_txt = f"{audio_file_path} (CALLEE) - {transcription}"
-            write_to_eof("debug/transcript.txt", debug_txt)
+        try:
+            audio_file_path = speaker_recorder.record()
+            
+            transcription = transcriber.transcribe(audio_file_path)
+            if debug:
+                debug_txt = f"{audio_file_path} (CALLEE) - {transcription}"
+                write_to_eof("debug/transcript.txt", debug_txt)
 
-        # latest_sentence = add_to_transcript(transcript, transcription)
-        # if latest_sentence != "":
-            # update_summary(latest_sentence)'
+            # latest_sentence = add_to_transcript(transcript, transcription)
+            # if latest_sentence != "":
+                # update_summary(latest_sentence)
 
-        # message = pass_prompt(transcript)
-        # print(message)
+            # message = pass_prompt(transcript)
+            # print(message)
+        except Exception as e:
+            print(f"Error in the speaker recording loop: {e}")
+            break
 
 def microphone_recording_loop():
     """
@@ -220,14 +224,23 @@ def microphone_recording_loop():
             # if latest_transcription != "":
             #     update_summary(latest_transcription)
             
-            time.sleep(0.5)
         except Exception as e:
             print(f"Error in microphone recording loop: {e}")
+            break
 
 
 if __name__ == "__main__":
     cleanup()
-    with ThreadPoolExecutor(max_workers=2) as executor:
-        executor.submit(microphone_recording_loop) # microphone in background thread
-        ai_assistant_loop() # speaker recorder in main thread
+    try:
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            executor.submit(microphone_recording_loop)
+            ai_assistant_loop()
+    except KeyboardInterrupt:
+        print("Program interrupted by user. Exiting...")
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
+    finally:
+        speaker_recorder.stop()
+        microphone_recorder.stop()
+        print("Cleanup done. Program terminated.")
 

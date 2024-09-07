@@ -19,7 +19,7 @@ transcript = Queue(maxsize=5)
 transcript_lock = threading.Lock()
 file_lock = threading.Lock()
 
-debug = False
+debug = True
 
 def cleanup():
     """
@@ -197,7 +197,7 @@ def ai_assistant_loop():
 
         # latest_sentence = add_to_transcript(transcript, transcription)
         # if latest_sentence != "":
-            # update_summary(latest_sentence)
+            # update_summary(latest_sentence)'
 
         # message = pass_prompt(transcript)
         # print(message)

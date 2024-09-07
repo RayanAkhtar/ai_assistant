@@ -16,6 +16,11 @@ llm = LLMQuery()
 transcript_summary_path = "doc/summary.txt"
 transcript = Queue(maxsize=5)
 
+transcript_lock = threading.Lock()
+file_lock = threading.Lock()
+
+debug = False
+
 def cleanup():
     """
     Cleans up the past session data by removing the data stores in tmp/, rec/ and debug/
@@ -25,7 +30,7 @@ def cleanup():
     for directory in directories_to_clean:
         for filename in os.listdir(directory):
             file_path = os.path.join(directory, filename)
-            if os.path.isfile(file_path) and filename != 'tmp.txt': # todo: remove later
+            if os.path.isfile(file_path) and filename != 'tmp.txt': # todo: remove later?
                 os.remove(file_path)
 
 def transcribe_audio(audio_file_path):
@@ -47,10 +52,12 @@ def add_to_transcript(transcript: Queue, transcription):
     :return: The transcription that was removed (if any)
     """
     latest_sentence = ""
-    if transcript.full():
-        latest_sentence = transcript.get()
-    
-    transcript.put(transcription)
+
+    with transcript_lock:
+        if transcript.full():
+            latest_sentence = transcript.get()
+        
+        transcript.put(transcription)
     return latest_sentence
     
 def summarise(summary: list[str]):
@@ -105,6 +112,11 @@ def update_summary(latest_sentence):
 
         fr.close()   
 
+def write_to_eof(pathname, text_to_write):
+    with file_lock:
+        with open(pathname, 'a') as file:
+            file.write(text_to_write)
+            file.write('\n')
 
 def get_files_in(directory, ignored_files):
     """
@@ -177,10 +189,16 @@ def ai_assistant_loop():
     """
     while True:
         audio_file_path = speaker_recorder.record()
-        # transcription = transcriber.transcribe(audio_file_path)
+        
+        transcription = transcriber.transcribe(audio_file_path)
+        if debug:
+            debug_txt = f"{audio_file_path} (CALLEE) - {transcription}"
+            write_to_eof("debug/transcript.txt", debug_txt)
+
         # latest_sentence = add_to_transcript(transcript, transcription)
         # if latest_sentence != "":
             # update_summary(latest_sentence)
+
         # message = pass_prompt(transcript)
         # print(message)
 
@@ -191,7 +209,17 @@ def microphone_recording_loop():
     """
     while True:
         try:
-            microphone_recorder.record()
+            audio_file_path = microphone_recorder.record()
+
+            transcription = transcriber.transcribe(audio_file_path)
+            if debug:
+                debug_txt = f"{audio_file_path} (CALLER) - {transcription}"
+                write_to_eof("debug/transcript.txt", debug_txt)
+            
+            #latest_transcription = add_to_transcript(transcript, transcription)
+            # if latest_transcription != "":
+            #     update_summary(latest_transcription)
+            
             time.sleep(0.5)
         except Exception as e:
             print(f"Error in microphone recording loop: {e}")

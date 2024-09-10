@@ -1,9 +1,9 @@
 from dotenv import load_dotenv
 import os
 from langchain_openai import OpenAI
-from langchain.chains import LLMChain
 from langchain_core.prompts import PromptTemplate
 from langchain.schema import Document
+from langchain_core.runnables import RunnableSequence
 import pdfplumber
 from docx import Document as DocxDocument
 
@@ -66,13 +66,9 @@ class LLMQuery:
             template=prompt_template,
             input_variables=["context", "query"]
         )
+        chain = prompt | self.llm
 
-        chain = LLMChain(
-            llm=self.llm,
-            prompt=prompt
-        )
-
-        response = chain.run(context=context, query=query)
+        response = chain.invoke({"context": context, "query": query})
         return response
 
 if __name__ == "__main__":

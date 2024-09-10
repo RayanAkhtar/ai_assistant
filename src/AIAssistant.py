@@ -32,6 +32,8 @@ def cleanup():
             file_path = os.path.join(directory, filename)
             if os.path.isfile(file_path) and filename != 'tmp.txt': # todo: remove later?
                 os.remove(file_path)
+    if os.path.exists(transcript_summary_path):
+        os.remove(transcript_summary_path)
 
 def transcribe_audio(audio_file_path):
     """

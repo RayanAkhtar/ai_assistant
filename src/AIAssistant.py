@@ -97,17 +97,18 @@ def update_summary(latest_sentence):
     """    
     summary: list[str] = []
 
-    with open(transcript_summary_path, "r") as fr:
-        summary = fr.readlines()
-        max_transcriptions = 6 # first index is summary, rest is transcriptions
-        
-        if summary.count > max_transcriptions:
-            summary = summarise(summary)
-        
-        fr.close()
+    try:
+        with open(transcript_summary_path, "r") as fr:
+            summary = fr.readlines()
+            max_transcriptions = 6  # first index is summary, rest is transcriptions
+            
+            if len(summary) > max_transcriptions:
+                summary = summarise(summary)
+    except FileNotFoundError:
+        summary = []
 
     with open(transcript_summary_path, "w") as fw:
-        summary.append(latest_sentence)
+        summary.append("\n" + latest_sentence)
         fw.writelines(summary) 
 
         fr.close()   
@@ -196,9 +197,9 @@ def ai_assistant_loop():
                 debug_txt = f"{audio_file_path} (CALLEE) - {transcription}"
                 write_to_eof("debug/transcript.txt", debug_txt)
 
-            # latest_sentence = add_to_transcript(transcript, transcription)
-            # if latest_sentence != "":
-                # update_summary(latest_sentence)
+            latest_sentence = add_to_transcript(transcript, transcription)
+            if latest_sentence != "":
+                update_summary(latest_sentence)
 
             # message = pass_prompt(transcript)
             # print(message)
@@ -220,9 +221,9 @@ def microphone_recording_loop():
                 debug_txt = f"{audio_file_path} (CALLER) - {transcription}"
                 write_to_eof("debug/transcript.txt", debug_txt)
             
-            #latest_transcription = add_to_transcript(transcript, transcription)
-            # if latest_transcription != "":
-            #     update_summary(latest_transcription)
+            latest_transcription = add_to_transcript(transcript, transcription)
+            if latest_transcription != "":
+                update_summary(latest_transcription)
             
         except Exception as e:
             print(f"Error in microphone recording loop: {e}")

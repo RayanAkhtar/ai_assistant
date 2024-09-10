@@ -26,7 +26,7 @@ class AudioTranscriber:
             model="whisper-1",
             file=audio_file
         )
-        return transcription
+        return transcription.text
         
 
     def save_transcription(self, transcription, output_path):

@@ -138,7 +138,7 @@ def get_files_in(directory, ignored_files):
     return files
 
 
-def pass_prompt(transcript):
+def pass_prompt(transcript: Queue):
     """
     Runs the prompt on the llm to generate responses for the caller
 
@@ -151,11 +151,13 @@ def pass_prompt(transcript):
     # Transcript is a queue for the transcript
 
     file_paths = get_files_in(directory="doc/", ignored_files=["tmp.txt"])
-
-    summary: list[str] = []
-    with open(transcript_summary_path, "r") as fr:
-        summary = fr.readlines()
-        fr.close()
+    try:
+        summary: list[str] = []
+        with open(transcript_summary_path, "r") as fr:
+            summary = fr.readlines()
+            fr.close()
+    except FileNotFoundError:
+        summary = []
 
     query = f"""
 Your role is a caller making a call to a company, the purpose is to sell a product/service to the other party.
@@ -167,14 +169,17 @@ Here is a summary of the current conversation:
 ---------------------
 
 Here is the transcript from the callee's side:
-{"\n".join(transcript)}
+{"\n".join(list(transcript.queue))}
 
 ---------------------
 
-Please suggest 3 or more speaking points from this point onwards.
-
+Refer to the MEDDPICC, Battlecards and Talk Tracks in order to provide the strongest possible arguments to sell this product/service.
+Please suggest up to 3 speaking points that could help increase the chances of this call going well.
+Write these points as a short quote that the caller can read, do not make it too descriptive.
 """
     
+    print(query)
+
     output = llm.generate_query(
         file_paths,
         [],
@@ -203,8 +208,8 @@ def ai_assistant_loop():
             if latest_sentence != "":
                 update_summary(latest_sentence)
 
-            # message = pass_prompt(transcript)
-            # print(message)
+            message = pass_prompt(transcript)
+            print(message)
         except Exception as e:
             print(f"Error in the speaker recording loop: {e}")
             break

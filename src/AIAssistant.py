@@ -2,7 +2,7 @@ import os
 from queue import Queue
 from concurrent.futures import ThreadPoolExecutor
 import threading
-import time
+from fpdf import FPDF
 
 from Recorder import Recorder
 from SpeechToText import AudioTranscriber
@@ -25,15 +25,16 @@ def cleanup():
     """
     Cleans up the past session data by removing the data stores in tmp/, rec/ and debug/
     """
-    # For now, it only ignores tmp.txt, this part will be removed upon completing the AI Assistant
     directories_to_clean = ['tmp', 'rec', 'debug']
     for directory in directories_to_clean:
         for filename in os.listdir(directory):
             file_path = os.path.join(directory, filename)
-            if os.path.isfile(file_path) and filename != 'tmp.txt': # todo: remove later?
+            if os.path.isfile(file_path) and filename != 'tmp.txt':  # todo: remove later?
                 os.remove(file_path)
     if os.path.exists(transcript_summary_path):
         os.remove(transcript_summary_path)
+
+
 
 def transcribe_audio(audio_file_path):
     """
@@ -113,7 +114,6 @@ def update_summary(latest_sentence):
         summary.append("\n" + latest_sentence)
         fw.writelines(summary) 
 
-        fr.close()   
 
 def write_to_eof(pathname, text_to_write):
     with file_lock:
@@ -155,12 +155,16 @@ def pass_prompt(transcript: Queue):
         summary: list[str] = []
         with open(transcript_summary_path, "r") as fr:
             summary = fr.readlines()
-            fr.close()
+
     except FileNotFoundError:
         summary = []
 
     query = f"""
 Your role is a caller making a call to a company, the purpose is to sell a product/service to the other party.
+You can only use stats and figures that are given in the context.
+You do not hallucinate data
+You do not give generic answers
+You say 'void' if you cannot find anything relevant to say
 
 ---------------------
 Here is a summary of the current conversation:
@@ -172,20 +176,24 @@ Here is the transcript from the callee's side:
 {"\n".join(list(transcript.queue))}
 
 ---------------------
-
+Return void if you cannot find relevant data to answer the query within the context, or other similar sources. 
+Do not hallucinate data.
+Do not return a generic sentence, if you cannot return anything, please only return 'void'
+Do not make up data, and do not assume any excess information, if there is no possible output, once again, return 'void'.
 Refer to the MEDDPICC, Battlecards and Talk Tracks in order to provide the strongest possible arguments to sell this product/service.
 Please suggest up to 3 speaking points that could help increase the chances of this call going well.
-Write these points as a short quote that the caller can read, do not make it too descriptive.
+Only write sentences that use context that is specific to either the call or the context.
+Write these points as short sentences that the caller can read, do not make it too descriptive.
+Do not use bullet points, only write each of the sentences on separate lines.
+Keep the sentences short, snappy and to the point, write each sentence on a new line
 """
     
     print(query)
-
     output = llm.generate_query(
         file_paths,
         [],
         query
     )
-
     return output
 
 
@@ -213,6 +221,7 @@ def ai_assistant_loop():
         except Exception as e:
             print(f"Error in the speaker recording loop: {e}")
             break
+        
 
 def microphone_recording_loop():
     """

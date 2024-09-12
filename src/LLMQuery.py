@@ -8,7 +8,6 @@ from langchain_openai import OpenAIEmbeddings
 from langchain_community.vectorstores import FAISS
 import pdfplumber
 from docx import Document as DocxDocument
-import heapq
 
 class LLMQuery:
     def __init__(self):

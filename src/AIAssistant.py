@@ -3,7 +3,6 @@ import os
 from queue import Queue
 from concurrent.futures import ThreadPoolExecutor
 import threading
-from fpdf import FPDF
 
 from Recorder import Recorder
 from SpeechToText import AudioTranscriber

@@ -1,3 +1,4 @@
+import warnings
 import os
 from queue import Queue
 from concurrent.futures import ThreadPoolExecutor
@@ -7,6 +8,8 @@ from fpdf import FPDF
 from Recorder import Recorder
 from SpeechToText import AudioTranscriber
 from LLMQuery import LLMQuery
+
+warnings.filterwarnings("ignore", message=".*data discontinuity.*")
 
 speaker_recorder = Recorder(mode='speaker')
 microphone_recorder = Recorder(mode='microphone')
@@ -29,12 +32,10 @@ def cleanup():
     for directory in directories_to_clean:
         for filename in os.listdir(directory):
             file_path = os.path.join(directory, filename)
-            if os.path.isfile(file_path) and filename != 'tmp.txt':  # todo: remove later?
+            if os.path.isfile(file_path):
                 os.remove(file_path)
     if os.path.exists(transcript_summary_path):
         os.remove(transcript_summary_path)
-
-
 
 def transcribe_audio(audio_file_path):
     """
@@ -43,6 +44,7 @@ def transcribe_audio(audio_file_path):
     :param audio_file_path: The path to the audio file
     :return: A transcription for that audio file
     """
+    print("Transcribing audio...")
     return transcriber.transcribe(audio_file_path)
 
 def add_to_transcript(transcript: Queue, transcription):
@@ -88,9 +90,9 @@ Here are the current transcripts:
 Please update the current summary with the current transcriptions to generate a new transcription.
 """
     
+    print("Generating summary update...")
     new_summary = llm.generate_query(file_paths=[], few_shot_prompts=[], query=query)
     return [new_summary]
-
 
 def update_summary(latest_sentence):
     """
@@ -114,7 +116,6 @@ def update_summary(latest_sentence):
         summary.append("\n" + latest_sentence)
         fw.writelines(summary) 
 
-
 def write_to_eof(pathname, text_to_write):
     with file_lock:
         with open(pathname, 'a') as file:
@@ -137,7 +138,6 @@ def get_files_in(directory, ignored_files):
                 files.append(os.path.join(root, filename))
     return files
 
-
 def pass_prompt(transcript: Queue):
     """
     Runs the prompt on the llm to generate responses for the caller
@@ -145,11 +145,6 @@ def pass_prompt(transcript: Queue):
     :param transcript: The current transcript of the call
     :return: The output for the caller
     """
-
-    # Documents that are to be read must be places in doc/
-    # A summary of the current conversation will also be held in doc/
-    # Transcript is a queue for the transcript
-
     file_paths = get_files_in(directory="doc/", ignored_files=["tmp.txt"])
     try:
         summary: list[str] = []
@@ -161,9 +156,10 @@ def pass_prompt(transcript: Queue):
 
     query = f"""
 Your role is a caller making a call to a company, the purpose is to sell a product/service to the other party.
-You can only use stats and figures that are given in the context.
-You do not hallucinate data
-You do not give generic answers
+You can only use stats and figures that are given in the context provided.
+If you give stats and figures, you explain how you obtained them.
+You do not hallucinate data.
+You do not give generic answers.
 You say 'void' if you cannot find anything relevant to say
 
 ---------------------
@@ -172,31 +168,24 @@ Here is a summary of the current conversation:
 
 ---------------------
 
-Here is the transcript from the callee's side:
+Here is the transcript between the caller and callee:
 {"\n".join(list(transcript.queue))}
 
 ---------------------
-Return void if you cannot find relevant data to answer the query within the context, or other similar sources. 
-Do not hallucinate data.
-Do not return a generic sentence, if you cannot return anything, please only return 'void'
-Do not make up data, and do not assume any excess information, if there is no possible output, once again, return 'void'.
-Refer to the MEDDPICC, Battlecards and Talk Tracks in order to provide the strongest possible arguments to sell this product/service.
-Please suggest up to 3 speaking points that could help increase the chances of this call going well.
-Only write sentences that use context that is specific to either the call or the context.
-Write these points as short sentences that the caller can read, do not make it too descriptive.
-Do not use bullet points, only write each of the sentences on separate lines.
-Keep the sentences short, snappy and to the point, write each sentence on a new line
+
+Please suggest up to 3 possible sentences that could help increase the chances of this call going well, do not number these sentences.
+Only write sentences that use information that is specific to either the call or the context provided.
+Make sure your output is short, snappy and to the point, writing each point on a new line.
+Make sure the sentences you suggest are relevant to the previous point the callee has mentioned.
 """
     
-    print(query)
+    print("Generating query...")
     output = llm.generate_query(
         file_paths,
         [],
         query
     )
     return output
-
-
 
 def ai_assistant_loop():
     """
@@ -205,24 +194,30 @@ def ai_assistant_loop():
     """
     while True:
         try:
+            print("Listening for audio from speaker...")
             audio_file_path = speaker_recorder.record()
             
-            transcription = transcriber.transcribe(audio_file_path)
+            print("Transcribing speaker audio...")
+            transcription = f"(CALLEE) - {transcriber.transcribe(audio_file_path)}"
             if debug:
-                debug_txt = f"{audio_file_path} (CALLEE) - {transcription}"
+                debug_txt = f"{audio_file_path} {transcription}"
                 write_to_eof("debug/transcript.txt", debug_txt)
 
             latest_sentence = add_to_transcript(transcript, transcription)
             if latest_sentence != "":
                 update_summary(latest_sentence)
 
+            print("Generating response...")
+            os.system('cls' if os.name == 'nt' else 'clear')
             message = pass_prompt(transcript)
             print(message)
-        except Exception as e:
-            print(f"Error in the speaker recording loop: {e}")
+        except KeyboardInterrupt:
+            print("Program interrupted by user. Exiting...")
             break
+        except Exception as e:
+            print(f"Error in the speaker recording loop: {e}. Continuing...")
+            continue
         
-
 def microphone_recording_loop():
     """
     The background loop for the ai assistant. Takes input from the microphone so that the
@@ -230,21 +225,25 @@ def microphone_recording_loop():
     """
     while True:
         try:
+            print("Listening for audio from microphone...")
             audio_file_path = microphone_recorder.record()
 
-            transcription = transcriber.transcribe(audio_file_path)
+            print("Transcribing microphone audio...")
+            transcription = f"(CALLER) - {transcriber.transcribe(audio_file_path)}"
             if debug:
-                debug_txt = f"{audio_file_path} (CALLER) - {transcription}"
+                debug_txt = f"{audio_file_path} {transcription}"
                 write_to_eof("debug/transcript.txt", debug_txt)
             
             latest_transcription = add_to_transcript(transcript, transcription)
             if latest_transcription != "":
                 update_summary(latest_transcription)
             
-        except Exception as e:
-            print(f"Error in microphone recording loop: {e}")
+        except KeyboardInterrupt:
+            print("Program interrupted by user. Exiting...")
             break
-
+        except Exception as e:
+            print(f"Error in microphone recording loop: {e}. Continuing...")
+            continue
 
 if __name__ == "__main__":
     cleanup()
@@ -260,4 +259,3 @@ if __name__ == "__main__":
         speaker_recorder.stop()
         microphone_recorder.stop()
         print("Cleanup done. Program terminated.")
-

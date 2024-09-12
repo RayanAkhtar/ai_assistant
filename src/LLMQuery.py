@@ -5,7 +5,7 @@ from langchain_core.prompts import PromptTemplate
 from langchain.schema import Document
 from langchain.text_splitter import CharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
-from langchain.vectorstores import FAISS
+from langchain_community.vectorstores import FAISS
 import pdfplumber
 from docx import Document as DocxDocument
 import heapq
@@ -57,13 +57,13 @@ class LLMQuery:
         """
         Split documents into smaller chunks and embed them into a vector store.
         """
-        text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
+        text_splitter = CharacterTextSplitter(chunk_size=2000, chunk_overlap=100)
         chunks = [text_splitter.split_text(doc.page_content) for doc in documents]
         flat_chunks = [chunk for sublist in chunks for chunk in sublist]
         doc_vectors = FAISS.from_texts(flat_chunks, self.embeddings)
         return doc_vectors
 
-    def _split_context(self, context: str, max_chunk_size: int = 1500) -> list[str]:
+    def _split_context(self, context: str, max_chunk_size: int = 2000) -> list[str]:
         """
         Split the context into smaller chunks to avoid exceeding the token limit.
 
@@ -115,7 +115,7 @@ class LLMQuery:
             chain = ranking_prompt | self.llm
             rating_response = chain.invoke({"query": query, "sentence": sentence})
 
-            # parsing the response as an integer score
+            # attempt to parse as an integer
             try:
                 rating = int(rating_response.strip())
             except ValueError:
@@ -125,7 +125,7 @@ class LLMQuery:
 
         scored_sentences.sort(reverse=True, key=lambda x: x[0])
 
-        # Top 3 sentences for now
+        # top 3 sentences for now
         top_sentences = [sentence for _, sentence in scored_sentences[:3]]
 
         return '.\n'.join(top_sentences) + '.\n'
@@ -149,11 +149,9 @@ class LLMQuery:
             documents = self._load_documents(file_paths)
             if documents:
                 doc_vectors = self._split_and_embed_documents(documents)
-                retrieved_chunks: list[Document] = doc_vectors.similarity_search(query, k=1)
+                retrieved_chunks: list[Document] = doc_vectors.similarity_search(query, k=3)
                 context = "\n".join([chunk.page_content for chunk in retrieved_chunks])
-
-                
-                context_chunks = self._split_context(context, max_chunk_size=1500)
+                context_chunks = self._split_context(context, max_chunk_size=2000)
             else:
                 print("Failed to load content from the provided documents.")
         else:
@@ -167,13 +165,12 @@ class LLMQuery:
         )
 
         responses = []
-
         
         for chunk in context_chunks:
             estimated_tokens = self._estimate_token_count(chunk + query + "".join(few_shot_prompts))
             
             if estimated_tokens > 4000:
-                sub_chunks = self._split_context(chunk, max_chunk_size=1000)
+                sub_chunks = self._split_context(chunk, max_chunk_size=2000)
                 partial_response = ""
                 
                 for sub_chunk in sub_chunks:
@@ -196,7 +193,6 @@ class LLMQuery:
                 response = chain.invoke({"context": chunk, "query": query})
                 responses.append(response)
 
-        # Getting the top 3 sentences from each prompt
         combined_response = self._rank_sentences(responses, query)
         return combined_response
 
